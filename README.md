@@ -9,7 +9,6 @@ This assignment teaches TCP congestion control algorithms through implementation
 ### For Students
 
 1. **Setup** (one time): Install Docker - see [SETUP.md](SETUP.md)
-2. **Assignment**: Complete the programming tasks - see [ASSIGNMENT.md](ASSIGNMENT.md)
 3. **Testing**: Use the simplified test script:
    ```bash
    cd docker
