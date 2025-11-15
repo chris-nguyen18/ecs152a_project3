@@ -58,7 +58,6 @@ Four congestion control algorithms:
 ## Documentation
 
 - **[SETUP.md](SETUP.md)** - Docker installation guide for all platforms
-- **[ASSIGNMENT.md](ASSIGNMENT.md)** - Complete assignment instructions and protocol specification
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Project Structure
