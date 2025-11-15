@@ -80,16 +80,15 @@ docker/
 
 ## Network Simulation
 
-The emulated network cycles through 4 phases with different conditions:
+The emulated network randomly transitions through 5 phases with varying conditions to test robustness and adaptability:
 
-| Phase | Bandwidth | Latency | Loss | Duration |
-|-------|-----------|---------|------|----------|
-| 1     | 50 Mbps   | 50ms    | 0.1% | 15s      |
-| 2     | 10 Mbps   | 50ms    | 1.0% | 10s      |
-| 3     | 30 Mbps   | 50-150ms| 0.5% | 12s      |
-| 4     | 40 Mbps   | 75ms    | 0-15%| 15s      |
-
-Your congestion control algorithm must adapt to these changing conditions.
+| Phase | Scenario | Bandwidth | Latency | Loss | Duration | Special Characteristics |
+|-------|----------|-----------|---------|------|----------|------------------------|
+| 1     | Stable Network | 45-55 Mbps | 40-70ms | 0-0.3% | 10-20s | Good conditions with minor jitter |
+| 2     | Congestion | 8-13 Mbps | 60-100ms | 0.5-2% | 10-20s | Simulates network congestion |
+| 3     | High Latency | 25-40 Mbps | 100-250ms | 0-1% | 10-20s | Satellite/long-distance links |
+| 4     | Bursty Loss | 35-45 Mbps | 50-100ms | 0-20% | 10-20s | Random loss bursts (interference) |
+| 5     | Reordering | 40-55 Mbps | 30-70ms | 0-0.5% | 10-20s | Packet reordering enabled |
 
 ## Important Notes
 
