@@ -51,9 +51,6 @@ test_sender.bat my_stop_and_wait.py [payload.zip]
 - **Default file**: Every script uses `file.zip` (from `docker/` or `docker/hdd/`) when you omit the third argument.
 - **Custom file**: Pass any relative or absolute path (`./test_sender.sh my_sender.py assets/mytrace.zip`). The script copies it into `/hdd/` inside the container with the same basename.
 - **Receivers**: The test harness sets `PAYLOAD_FILE`/`TEST_FILE` env vars before starting in-container receivers. The stock `receiver.py` and the provided Python sender templates consume these to find both the source file (`/hdd/<name>`) and the output (`/hdd/<name>_received.*`).
-- **Fairness tests**: `test_fairness.sh senderA.py senderB.py custom.zip` uses the exact same file for both flows, so you can benchmark with different dataset sizes without editing the scripts.
-
-Tip: Store any extra payloads under `docker/hdd/` so they’re volume-mounted automatically, then invoke the scripts with just the filename.
 
 ### Skeleton sender for smoke testing
 
