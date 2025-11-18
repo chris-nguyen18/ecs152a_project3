@@ -110,7 +110,7 @@ The shipping `training_profile.sh` drives a 5-phase traffic pattern by reshaping
 | 4     | Moderate capacity                                | 3,500 – 6,000    | 30 – 70         | 0.25 – 0.85 | 20,000                |
 | 5     | Sudden squeeze to force instant queue build-up   | 800 – 1,400      | 70 – 120        | 0.20 – 0.70 | 45,000                |
 
-All phases run over the `lo` interface, so you still test locally, but the HTB + netem stack enforces the above limits (no artificial packet reordering is applied in the current profile). Designing your sender to handle deep queues and varying bandwidth is essential because most time is spent in the “tight bottleneck” phases.
+All phases run over the `lo` interface, so you still test locally, but the HTB + netem stack enforces the above limits.
 
 ## Important Notes
 
