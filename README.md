@@ -72,9 +72,10 @@ It sends two quick demo packets (plus the EOF marker) and prints metrics so you 
 Four congestion control algorithms:
 
 1. **Stop-and-Wait** - Send one packet, wait for ACK (simplest)
-2. **TCP Tahoe** - Slow start + congestion avoidance + fast retransmit
-3. **TCP Reno** - Adds fast recovery to Tahoe for better performance
-4. **Custom Protocol** - Design your own congestion control algorithm (optional)
+2. **Sliding Window** - Send multiple packets up to a window size, wait for ACKs
+3. **TCP Tahoe** - Slow start + congestion avoidance + fast retransmit
+4. **TCP Reno** - Adds fast recovery to Tahoe for better performance
+5. **Custom Protocol** - Design your own congestion control algorithm to beat TCP Reno
 
 ## Documentation
 
