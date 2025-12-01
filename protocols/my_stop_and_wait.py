@@ -1,3 +1,5 @@
+#!/usr/bin/env python3 -u
+
 from __future__ import annotations
 
 import os
@@ -76,7 +78,11 @@ def print_metrics(total_bytes: int, duration: float, delays: List[float]) -> Non
    
 def main() -> None:
    chunks = load_payload_chunks()
+   print("chunks", chunks)# debug
+   print("length chunks", len(chunks))# debug 
    transfers: List[Tuple[int, bytes]] = []
+   print("transfers", transfers)# debug
+   print("transfers chunks", len(transfers))# debug 
 
    seq = 0
    for chunk in chunks:
@@ -85,6 +91,10 @@ def main() -> None:
 
    transfers.append((seq, b""))
    total_bytes = sum(len(chunk) for chunk in chunks)
+
+   print("transfers", transfers)# debug
+   print("transfers chunks", len(transfers))# debug 
+   print("total_bytes: ", total_bytes)
 
    delays = []
 
@@ -119,7 +129,7 @@ def main() -> None:
             if msg.startswith("ack") and ack_id >= seq_id + len(payload):
                delays.append(time.time() - send_time)
                break
-
+   
    while True:
       try:
          ack_pkt, _ = sock.recvfrom(PACKET_SIZE)
@@ -142,74 +152,3 @@ if __name__ == "__main__":
    except Exception as exc:
       print(f"Skeleton sender hit an error: {exc}", file=sys.stderr)
       sys.exit(1)
-
-   
-
-
-
-
-
-
-'''
-def stop_and_wait_send(receiver_ip, receiver_port, file_path):
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(TIMEOUT)
-
-   delays = []
-   send_times = {}
-   seq = 0
-   total_bytes = 0
-
-   start_time = time.time()
-
-   with open(file_path, "rb") as f:
-      while True:
-         chunk = f.read(PACKET_SIZE - 4)
-         if not chunk:
-            break
-
-         packet = struct.pack("!I", seq) + chunk
-         total_bytes += len(chunk)
-
-         send_times[seq] = time.time()
-
-         while True:
-            sock.sendto(packet, (receiver_ip, receiver_port))
-            print(f"Sent packet with sequence number {seq}")
-
-            try:
-               ack, _ = sock.recvfrom(4)
-               ack_seq = struct.unpack("!I", ack)[0]
-
-               if ack_seq == seq:
-                  ack_time = time.time()
-                  delays.append(ack_time - send_times[seq])
-
-                  seq = 1 - seq
-                  print(f"Received ACK {ack_seq}")
-                  break
-                  
-            except socket.timeout:
-               print("Timeout! Retransmitting...")
-
-   fin = struct.pack("!I", seq)
-   sock.sendto(fin, (receiver_ip, receiver_port))
-   sock.close()
-   
-   duration = time.time() - start_time
-   throughput = total_bytes / duration
-
-   if len(delays) > 1:
-      diffs = [abs(delays[i] - delays[i-1]) for i in range(1, len(delays))]
-      avg_jitter = sum(diffs) / len(diffs)
-   else:
-      avg_jitter = 0.0
-
-   avg_delay = sum(delays) / len(delays) if delays else 0.0
-
-   metric = (throughput / 2000) + (15 / avg_jitter) + (35 / avg_delay)
-
-   print(f"{throughput},{avg_delay},{avg_jitter},{metric}")
-
-   return metric, throughput, avg_jitter, avg_delay
-'''
