@@ -19,7 +19,7 @@ TIMEOUT = 1.0
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
-
+# test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
 def load_payload_chunks() -> List[bytes]:
    """
    Reads the selected payload file (or falls back to file.zip) and returns
