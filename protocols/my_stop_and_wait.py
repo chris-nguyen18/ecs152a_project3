@@ -5,6 +5,7 @@ import os
 import socket
 import sys
 import time
+import statistics
 from typing import List, Tuple
 
 PACKET_SIZE = 1024
@@ -103,7 +104,7 @@ def parse_ack(packet: bytes) -> Tuple[int, str]:
    return seq, msg
 
 
-def print_metrics(total_bytes: int, duration: float, delays: List[float]) -> None:
+def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) -> None:
    throughput = total_bytes / duration if duration > 0 else 0.0
 
    avg_delay = sum(delays) / len(delays) if delays else 0.0
@@ -125,9 +126,32 @@ def print_metrics(total_bytes: int, duration: float, delays: List[float]) -> Non
    print(f"avg_delay={avg_delay:.6f}s avg_jitter={avg_jitter:.6f}s ") 
    print(f"{throughput:.7f},{avg_delay:.7f},{avg_jitter:.7f},{metric:.7f}")
 
+   return throughput, avg_delay, avg_jitter, metric
+
+
+def print_stats(measurements: List[tuple]):
+   throughputs, delays_avg, jitters_avg, metrics = [], [], [], []
+
+   for total_bytes, duration, delays in measurements:
+      t, d, j, m = calculate_metrics(total_bytes, duration, delays)
+      throughputs.append(t)
+      delays_avg.append(d)
+      jitters_avg.append(j)
+      metrics.append(m)
+      print(f"Run: throughput={t:.2f}, avg_delay={d:.6f}, avg_jitter={j:.6f}, metric={m:.6f}")
+
+   # Compute averages and standard deviations
+   print("\n=== Summary over all runs ===")
+   print(f"Throughput: mean={statistics.mean(throughputs):.2f}, std={statistics.stdev(throughputs):.2f}")
+   print(f"Avg Delay: mean={statistics.mean(delays_avg):.6f}, std={statistics.stdev(delays_avg):.6f}")
+   print(f"Avg Jitter: mean={statistics.mean(jitters_avg):.6f}, std={statistics.stdev(jitters_avg):.6f}")
+   print(f"Performance Metric: mean={statistics.mean(metrics):.6f}, std={statistics.stdev(metrics):.6f}")
+
+
 
 def main() -> None:
    chunks = load_payload_chunks()
+   measurements = []
    print(f"[DEBUG] Loaded payload chunks ({len(chunks)} chunks):")
    for i, chunk in enumerate(chunks): # delete later
       print(f"  Chunk {i}: length={len(chunk)} content={chunk[:50]}{'...' if len(chunk) > 50 else ''}")
@@ -205,7 +229,9 @@ def main() -> None:
             break
 
    duration = time.time() - start_time
-   print_metrics(total_bytes, duration, delays)
+   measurements.append(calculate_metrics(total_bytes, duration, delays))
+   print_stats(measurements)
+
 
 if __name__ == "__main__":
     try:
