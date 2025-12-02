@@ -156,7 +156,7 @@ def main() -> None:
 
       for seq_id, payload in transfers:
          pkt = make_packet(seq_id, payload)
-         print(f"Sending frame seq={seq_id}, bytes={len(payload)}")
+         #print(f"Sending frame seq={seq_id}, bytes={len(payload)}")
          retries = 0
 
          while True:
