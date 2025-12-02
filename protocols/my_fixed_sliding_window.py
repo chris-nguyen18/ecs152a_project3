@@ -130,11 +130,11 @@ def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) ->
 
    return throughput, avg_delay, avg_jitter, metric
 
-def print_stats(measurements: List[tuple]):
-   throughputs, delays_avg, jitters_avg, metrics = [], [], [], []
 
-   for total_bytes, duration, delays in measurements:
-      t, d, j, m = calculate_metrics(total_bytes, duration, delays)
+def print_stats(measurements: List[tuple]):
+   throughputs, jitters_avg, delays_avg, metrics = [], [], [], []
+
+   for t, j, d, m in measurements:
       throughputs.append(t)
       delays_avg.append(d)
       jitters_avg.append(j)

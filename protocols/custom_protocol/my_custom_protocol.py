@@ -147,6 +147,10 @@ def model_predict_cwnd(model, scaler, loss, delay, throughput):
 def main() -> None:
    chunks = load_payload_chunks()
    seq = 0
+
+   model, scaler, encoder = load_model()
+   
+
    pass
         
 
