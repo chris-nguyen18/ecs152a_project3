@@ -19,7 +19,7 @@ TIMEOUT = 1.0
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
-'''
+
 # test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
 def load_payload_chunks() -> List[bytes]:
    """
@@ -95,7 +95,7 @@ def load_payload_chunks() -> List[bytes]:
    chunk5 = data[4*MSS:5*MSS] or b"Chunk 5 placeholder"
 
    return [chunk1, chunk2, chunk3, chunk4, chunk5]
-
+'''
    
 def make_packet(seq_id: int, payload: bytes) -> bytes:
    return int.to_bytes(seq_id, SEQ_ID_SIZE, byteorder="big", signed=True) + payload
@@ -129,6 +129,8 @@ def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) ->
    print(f"avg_delay={avg_delay:.6f}s avg_jitter={avg_jitter:.6f}s d") 
    print(f"{throughput:.7f},{avg_delay:.7f},{avg_jitter:.7f},{metric:.7f}")
 
+   return 
+
 
 def main() -> None:
    chunks = load_payload_chunks()
@@ -147,7 +149,7 @@ def main() -> None:
    total_bytes = sum(len(chunk) for chunk in chunks)
    total_packets = len(packets)   
 
-   base, next_seq, window_size = 0,0,5
+   base, next_seq, window_size = 0,0,100
 
    send_time = {i: None for i in range(total_packets)}
    acked = {i: False for i in range(total_packets)}
