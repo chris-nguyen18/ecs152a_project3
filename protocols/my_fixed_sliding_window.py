@@ -19,6 +19,7 @@ TIMEOUT = 1.0
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
+'''
 # test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
 def load_payload_chunks() -> List[bytes]:
    """
@@ -94,7 +95,7 @@ def load_payload_chunks() -> List[bytes]:
    chunk5 = data[4*MSS:5*MSS] or b"Chunk 5 placeholder"
 
    return [chunk1, chunk2, chunk3, chunk4, chunk5]
-'''
+
    
 def make_packet(seq_id: int, payload: bytes) -> bytes:
    return int.to_bytes(seq_id, SEQ_ID_SIZE, byteorder="big", signed=True) + payload
@@ -128,33 +129,12 @@ def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) ->
    print(f"avg_delay={avg_delay:.6f}s avg_jitter={avg_jitter:.6f}s d") 
    print(f"{throughput:.7f},{avg_delay:.7f},{avg_jitter:.7f},{metric:.7f}")
 
-   return throughput, avg_delay, avg_jitter, metric
-
-
-def print_stats(measurements: List[tuple]):
-   throughputs, jitters_avg, delays_avg, metrics = [], [], [], []
-
-   for t, j, d, m in measurements:
-      throughputs.append(t)
-      delays_avg.append(d)
-      jitters_avg.append(j)
-      metrics.append(m)
-      print(f"Run: throughput={t:.2f}, avg_delay={d:.6f}, avg_jitter={j:.6f}, metric={m:.6f}")
-
-   # Compute averages and standard deviations
-   print("\n=== Summary over all runs ===")
-   print(f"Throughput: mean={statistics.mean(throughputs):.2f}, std={statistics.stdev(throughputs):.2f}")
-   print(f"Avg Delay: mean={statistics.mean(delays_avg):.6f}, std={statistics.stdev(delays_avg):.6f}")
-   print(f"Avg Jitter: mean={statistics.mean(jitters_avg):.6f}, std={statistics.stdev(jitters_avg):.6f}")
-   print(f"Performance Metric: mean={statistics.mean(metrics):.6f}, std={statistics.stdev(metrics):.6f}")
-
 
 def main() -> None:
    chunks = load_payload_chunks()
    seq = 0
    seq_numbers = []
    packets = []
-   measurements = []
 
    for chunk in chunks:
       packets.append(make_packet(seq, chunk))
@@ -212,9 +192,7 @@ def main() -> None:
                send_time[seq] = time.time()
 
    duration = time.time() - start_time
-   measurements.append(calculate_metrics(total_bytes, duration, delays))
-   print_stats(measurements)
-
+   calculate_metrics(total_bytes, duration, delays)
 
 if __name__ == "__main__":
     try:

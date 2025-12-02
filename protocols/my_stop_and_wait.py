@@ -126,59 +126,27 @@ def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) ->
    print(f"avg_delay={avg_delay:.6f}s avg_jitter={avg_jitter:.6f}s ") 
    print(f"{throughput:.7f},{avg_delay:.7f},{avg_jitter:.7f},{metric:.7f}")
 
-   return throughput, avg_delay, avg_jitter, metric
-
-
-def print_stats(measurements: List[tuple]):
-   throughputs, jitters_avg, delays_avg, metrics = [], [], [], []
-
-   for t, j, d, m in measurements:
-      throughputs.append(t)
-      delays_avg.append(d)
-      jitters_avg.append(j)
-      metrics.append(m)
-      print(f"Run: throughput={t:.2f}, avg_delay={d:.6f}, avg_jitter={j:.6f}, metric={m:.6f}")
-
-   # Compute averages and standard deviations
-   print("\n=== Summary over all runs ===")
-   print(f"Throughput: mean={statistics.mean(throughputs):.2f}, std={statistics.stdev(throughputs):.2f}")
-   print(f"Avg Delay: mean={statistics.mean(delays_avg):.6f}, std={statistics.stdev(delays_avg):.6f}")
-   print(f"Avg Jitter: mean={statistics.mean(jitters_avg):.6f}, std={statistics.stdev(jitters_avg):.6f}")
-   print(f"Performance Metric: mean={statistics.mean(metrics):.6f}, std={statistics.stdev(metrics):.6f}")
-
+   #return throughput, avg_delay, avg_jitter, metric
 
 
 def main() -> None:
    chunks = load_payload_chunks()
-   measurements = []
-   print(f"[DEBUG] Loaded payload chunks ({len(chunks)} chunks):")
-   for i, chunk in enumerate(chunks): # delete later
-      print(f"  Chunk {i}: length={len(chunk)} content={chunk[:50]}{'...' if len(chunk) > 50 else ''}")
+   #measurements = []
 
    transfers: List[Tuple[int, bytes]] = []
    delays = []
 
    seq = 0
    for chunk in chunks:
-      # delete later
-      print(f"[DEBUG] Adding chunk {i} to transfers with seq={seq}, length={len(chunk)}")
       transfers.append((seq, chunk))
       seq += len(chunk)
-   print("seq: ", seq)# delete later
-
 
    # EOF marker
    transfers.append((seq, b""))
-   print(f"[DEBUG] Added EOF marker with seq={seq}") # delete later
-   print(f"[DEBUG] Total transfers list length: {len(transfers)}")  # delete later
 
    total_bytes = sum(len(chunk) for chunk in chunks)
 
    print(f"Connecting to receiver at {HOST}:{PORT}")
-   # delete later
-   print(
-      f"Test transfer will send {total_bytes} bytes across {len(chunks)} packets (+EOF)."
-   )
 
    start_time = time.time()
 
@@ -204,7 +172,7 @@ def main() -> None:
                continue
 
             ack_id, msg = parse_ack(ack_pkt)
-            print(f"Received {msg.strip()} for ack_id={ack_id}")
+            #print(f"Received {msg.strip()} for ack_id={ack_id}")
 
             if msg.startswith("ack") and ack_id >= seq_id + len(payload):
                delays.append(time.time() - send_time)
@@ -228,8 +196,9 @@ def main() -> None:
             break
 
    duration = time.time() - start_time
-   measurements.append(calculate_metrics(total_bytes, duration, delays))
-   print_stats(measurements)
+   calculate_metrics(total_bytes, duration, delays)
+   #measurements.append(calculate_metrics(total_bytes, duration, delays))
+   #print_stats(measurements)
 
 
 if __name__ == "__main__":
