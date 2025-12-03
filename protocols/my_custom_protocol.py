@@ -20,7 +20,12 @@ MIN_CWND = 10
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
+'''
+Put in readme to just run this file, the custom protocol folder is for recreating the model 
+Use hardcoded model in here to avoid dependencies on libraries within docker
+'''
 
+'''
 def load_payload_chunks() -> List[bytes]:
    """
    Reads the selected payload file (or falls back to file.zip) and returns
@@ -95,7 +100,7 @@ def load_payload_chunks() -> List[bytes]:
    chunk5 = data[4*MSS:5*MSS] or b"Chunk 5 placeholder"
 
    return [chunk1, chunk2, chunk3, chunk4, chunk5]
-'''
+
 
 
 def make_packet(seq_id: int, payload: bytes) -> bytes:
@@ -146,7 +151,7 @@ def model_predict_cwnd(model, scaler, loss, delay, throughput):
 '''
 
 # Uses equations as hardcoded values from model
-def predict_cwnd(loss, delay, throughput):
+def predict_cwnd(loss, delay, throughput, current_cwnd):
    score_decrease = (-0.076597 * loss +
                       -0.200254 * delay +
                       -0.002375 * throughput +
@@ -169,9 +174,14 @@ def predict_cwnd(loss, delay, throughput):
       "increase": score_increase
    }
 
-   # Return the action with the maximum score
    best_action = max(scores, key=scores.get)
-   return best_action
+
+   if best_action == "increase":
+      return current_cwnd + 5
+   elif best_action == "decrease":
+      return max(current_cwnd - 5, MIN_CWND)  
+   else: 
+      return current_cwnd
 
 
 def main() -> None:
@@ -208,7 +218,7 @@ def main() -> None:
             ack_id, _ = parse_ack(ack_pkt)
 
             if ack_id in inflight:
-               rtt = time.time() - start_time
+               rtt = time.time() - inflight[ack_id]
                delays.append(rtt)
                del inflight[ack_id]
 
@@ -221,7 +231,7 @@ def main() -> None:
                avg_delay = sum(delays) / len(delays)
                loss_rate = loss_count / max(len(chunks), 1)
 
-               predicted_cwnd = predict_cwnd(loss_rate, avg_delay, throughput)
+               predicted_cwnd = predict_cwnd(loss_rate, avg_delay, throughput, cwnd)
 
                cwnd = max(min(int(predicted_cwnd), MAX_CWND), MIN_CWND)
 
@@ -230,12 +240,12 @@ def main() -> None:
          except socket.timeout:
             print("[WARNING] ACK timeout → treating as loss")
             loss_count += 1
-            
-            for seq in range(base, next_seq):   
+               
+            for seq in list(inflight.keys()):   
                #seq_id = base
-               packet = make_packet(seq_id, chunks[seq_id])
+               packet = make_packet(seq, chunks[seq_id])
                sock.sendto(packet, addr)
-               inflight[seq_id] = time.time()
+               inflight[seq] = time.time()
 
    duration = time.time() - start_time
    print_metrics(total_bytes, duration, delays)

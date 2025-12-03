@@ -6,7 +6,6 @@ import os
 import socket
 import sys
 import time
-import statistics
 from typing import List, Tuple
 
 PACKET_SIZE = 1024
@@ -198,8 +197,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as exc:
-        print(f"Skeleton sender hit an error: {exc}", file=sys.stderr)
-        sys.exit(1)
+   try:
+      main()
+   except Exception as exc:
+      print(f"Skeleton sender hit an error: {exc}", file=sys.stderr)
+      sys.exit(1)
