@@ -52,7 +52,6 @@ fixed_sliding_window_results = {
    }
 }
 
-
 # tcp tahoe
 tcp_tahoe_results = {
     "tcp_tahoe": {
