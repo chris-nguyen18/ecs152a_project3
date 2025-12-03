@@ -7,9 +7,6 @@ import socket
 import sys
 import time
 
-import numpy as np
-import joblib
-
 from typing import List, Tuple
 
 PACKET_SIZE = 1024
@@ -133,17 +130,49 @@ def print_metrics(total_bytes: int, duration: float, delays: List[float]) -> Non
    print(f"avg_delay={avg_delay:.6f}s avg_jitter={avg_jitter:.6f}s d") 
    print(f"{throughput:.7f},{avg_delay:.7f},{avg_jitter:.7f},{metric:.7f}")
 
+'''
 def load_model():
    model = joblib.load("ml_cwnd_model.pkl")
    scaler = joblib.load("scaler.pkl")
    encoder = joblib.load("label_encoder.pkl")
    return model, scaler, encoder
 
+
 def model_predict_cwnd(model, scaler, loss, delay, throughput):
    X = np.array([[loss, delay, throughput]])
    X_scaled = scaler.transform(X)
    predict = model.predict(X_scaled)[0]
    return predict
+'''
+
+# Uses equations as hardcoded values from model
+def predict_cwnd(loss, delay, throughput):
+   score_decrease = (-0.076597 * loss +
+                      -0.200254 * delay +
+                      -0.002375 * throughput +
+                      0.893127)
+
+   score_hold = (0.003699 * loss +
+               -0.000245 * delay +
+               0.452747 * throughput +
+               0.084082)
+
+   score_increase = (0.072897 * loss +
+                     0.200499 * delay +
+                     -0.450373 * throughput +
+                     -0.977209)
+
+   # Choose the action with the highest score
+   scores = {
+      "decrease": score_decrease,
+      "hold": score_hold,
+      "increase": score_increase
+   }
+
+   # Return the action with the maximum score
+   best_action = max(scores, key=scores.get)
+   return best_action
+
 
 def main() -> None:
    chunks = load_payload_chunks()
@@ -151,8 +180,6 @@ def main() -> None:
 
    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
       sock.settimeout(ACK_TIMEOUT)
-
-      model, scaler, encoder = load_model()
 
       next_seq = 0
       base = 0  
@@ -194,9 +221,7 @@ def main() -> None:
                avg_delay = sum(delays) / len(delays)
                loss_rate = loss_count / max(len(chunks), 1)
 
-               predicted_cwnd = model_predict_cwnd(
-                  model, scaler, loss_rate, avg_delay, throughput
-               )
+               predicted_cwnd = predict_cwnd(loss_rate, avg_delay, throughput)
 
                cwnd = max(min(int(predicted_cwnd), MAX_CWND), MIN_CWND)
 
@@ -214,7 +239,6 @@ def main() -> None:
 
    duration = time.time() - start_time
    print_metrics(total_bytes, duration, delays)
-
 
 
 if __name__ == "__main__":
