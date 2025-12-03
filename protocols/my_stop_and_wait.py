@@ -141,7 +141,8 @@ def main() -> None:
    seq = 0
    for chunk in chunks:
       transfers.append((seq, chunk))
-      seq += len(chunk)
+      #seq += len(chunk)
+      seq += 1
 
    # EOF marker
    transfers.append((seq, b""))

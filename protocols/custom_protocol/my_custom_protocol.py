@@ -17,6 +17,8 @@ SEQ_ID_SIZE = 4
 MSS = PACKET_SIZE - SEQ_ID_SIZE
 ACK_TIMEOUT = 1.0
 MAX_TIMEOUTS = 5
+MAX_CWND = 1000
+MIN_CWND = 10
 
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
@@ -143,37 +145,76 @@ def model_predict_cwnd(model, scaler, loss, delay, throughput):
    predict = model.predict(X_scaled)[0]
    return predict
 
-
 def main() -> None:
    chunks = load_payload_chunks()
    total_bytes = sum(len(chunk) for chunk in chunks)
 
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(ACK_TIMEOUT)
+   with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+      sock.settimeout(ACK_TIMEOUT)
 
-   model, scaler, encoder = load_model()
+      model, scaler, encoder = load_model()
 
-   cwnd = 1                    
-   base = 0                   
-   next_seq = 0               
+      next_seq = 0
+      base = 0  
+      inflight = {} 
 
-   seq_times = {}             
-   acks_received = set()       
-   delays = []              
+      start_time = time.time()
+      delays = []
+      loss_count = 0
 
-   start_time = time.time()
+      cwnd = 50
+      predicted_cwnd = 1
 
-   while base < len(chunks):
-      window_end = min(base + cwnd, len(chunks))
-      for i in range(next_seq, window_end):
-         pkt = make_packet(i, chunks[i])
-         seq_times[i] = time.time()
-         sock.sendto(pkt, (HOST, PORT))
-      next_seq = window_end
+      while base < len(chunks):
+         while next_seq < len(chunks) and (len(inflight) < cwnd):
+            seq_id = next_seq
+            payload = chunks[seq_id]
+            packet = make_packet(seq_id, payload)
 
-      round_bytes = 0
-      round_delays = []
-      losses = 0
+            addr = (HOST, PORT)
+            sock.sendto(packet, addr)
+            inflight[seq_id] = time.time()
+            next_seq += 1
+
+         try:
+            ack_pkt, _ = sock.recvfrom(PACKET_SIZE)
+            ack_id, _ = parse_ack(ack_pkt)
+
+            if ack_id in inflight:
+               rtt = time.time() - start_time
+               delays.append(rtt)
+               del inflight[ack_id]
+
+               if ack_id == base:
+                  while base not in inflight and base < len(chunks):
+                     base += 1
+
+               duration = time.time() - start_time
+               throughput = total_bytes / duration if duration > 0 else 0
+               avg_delay = sum(delays) / len(delays)
+               loss_rate = loss_count / max(len(chunks), 1)
+
+               predicted_cwnd = model_predict_cwnd(
+                  model, scaler, loss_rate, avg_delay, throughput
+               )
+
+               cwnd = max(min(int(predicted_cwnd), MAX_CWND), MIN_CWND)
+
+               print(f"[DEBUG ML]: cwnd={cwnd} loss={loss_rate:.4f} delay={avg_delay:.5f}")
+
+         except socket.timeout:
+            print("[WARNING] ACK timeout → treating as loss")
+            loss_count += 1
+            
+            for seq in range(base, next_seq):   
+               #seq_id = base
+               packet = make_packet(seq_id, chunks[seq_id])
+               sock.sendto(packet, addr)
+               inflight[seq_id] = time.time()
+
+   duration = time.time() - start_time
+   print_metrics(total_bytes, duration, delays)
+
 
 
 if __name__ == "__main__":
