@@ -17,6 +17,7 @@ MAX_TIMEOUTS = 5
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
+
 # test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
 '''
 def load_payload_chunks() -> List[bytes]:
@@ -94,6 +95,7 @@ def load_payload_chunks() -> List[bytes]:
    
    return [data[i:i+MSS] for i in range(0, len(data), MSS)]
 
+   
 def make_packet(seq_id: int, payload: bytes) -> bytes:
    return int.to_bytes(seq_id, SEQ_ID_SIZE, byteorder="big", signed=True) + payload
 
@@ -197,9 +199,6 @@ def main() -> None:
 
    duration = time.time() - start_time
    calculate_metrics(total_bytes, duration, delays)
-   #measurements.append(calculate_metrics(total_bytes, duration, delays))
-   #print_stats(measurements)
-
 
 if __name__ == "__main__":
     try:

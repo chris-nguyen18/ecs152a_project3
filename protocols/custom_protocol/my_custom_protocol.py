@@ -146,13 +146,35 @@ def model_predict_cwnd(model, scaler, loss, delay, throughput):
 
 def main() -> None:
    chunks = load_payload_chunks()
-   seq = 0
+   total_bytes = sum(len(chunk) for chunk in chunks)
+
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(ACK_TIMEOUT)
 
    model, scaler, encoder = load_model()
-   
 
-   pass
-        
+   cwnd = 1                    
+   base = 0                   
+   next_seq = 0               
+
+   seq_times = {}             
+   acks_received = set()       
+   delays = []              
+
+   start_time = time.time()
+
+   while base < len(chunks):
+      window_end = min(base + cwnd, len(chunks))
+      for i in range(next_seq, window_end):
+         pkt = make_packet(i, chunks[i])
+         seq_times[i] = time.time()
+         sock.sendto(pkt, (HOST, PORT))
+      next_seq = window_end
+
+      round_bytes = 0
+      round_delays = []
+      losses = 0
+
 
 if __name__ == "__main__":
    try:

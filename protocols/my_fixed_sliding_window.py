@@ -196,6 +196,7 @@ def main() -> None:
    duration = time.time() - start_time
    calculate_metrics(total_bytes, duration, delays)
 
+
 if __name__ == "__main__":
     try:
         main()
