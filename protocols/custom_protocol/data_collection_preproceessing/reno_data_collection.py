@@ -1,12 +1,14 @@
+# modificaiton of TCP Reno implementation to collect data with: cwnd_size, loss, delay, and throughput
+
 #!/usr/bin/env python3 -u
 
 from __future__ import annotations
 
+import csv
 import os
 import socket
 import sys
 import time
-import struct
 from typing import List, Tuple
 
 PACKET_SIZE = 1024
@@ -89,9 +91,24 @@ class reno:
         self.in_fast_recovery = False
         self.send_times = {}
 
+         # Storing dataset
+        self.dataset = []
+
+    def get_action(self, prev_cwnd: float, curr_cwnd: float) -> str:
+      """ Determine if the cwnd is decreasing, holding, or increasing """
+      if curr_cwnd < prev_cwnd:
+         return "decrease"
+      elif curr_cwnd > prev_cwnd:
+         return "increase"
+      else:
+         return "hold"
+
+
     def send_chunks(self, chunks: List[bytes]):
         start_time = time.time()
         total_bytes = sum(len(c) for c in chunks)
+        prev_cwnd = self.cwnd 
+
         while self.base < len(chunks):
             while self.next_seq < self.base + int(self.cwnd) and self.next_seq < len(chunks):
                 seq_bytes = self.next_seq * MSS
@@ -106,6 +123,25 @@ class reno:
                 recv_time = time.time()
                 delay = recv_time - self.send_times.get(ack_id, recv_time)
                 self.delays.append(delay)
+
+                # Gathering data 
+                throughput = total_bytes / (recv_time - start_time)
+                loss = self.dupacks / max(self.next_seq - self.base, 1)
+
+                # Classify cwnd change: increase, hold, or decrease
+                action = self.get_action(prev_cwnd, self.cwnd)
+                
+                # Save data to the dataset
+                self.dataset.append({
+                    'cwnd': self.cwnd,
+                    'action': action,
+                    'loss': loss,
+                    'delay': delay,
+                    'throughput': throughput
+                })
+                
+                # Update previous cwnd for next iteration
+                prev_cwnd = self.cwnd
 
                 if ack_id == self.last_ack:
                     self.dupacks += 1
@@ -169,11 +205,34 @@ class reno:
         duration = time.time() - start_time
         return self.total_bytes, duration, self.delays
 
+    def save_dataset(self, filename: str) -> None:
+        """ Save the dataset to a CSV file """
+        target_folder = os.path.join("..", "protocols", "custom_protocol", "data_collection_preprocessing", "data")
+        
+        # Ensure the 'data' folder exists
+        os.makedirs(target_folder, exist_ok=True)
+        
+        # Define the full path to the CSV file
+        filepath = os.path.join(target_folder, filename)
+        
+        # Save the dataset to the specified path
+        with open(filepath, mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=['cwnd', 'action', 'loss', 'delay', 'throughput'])
+            writer.writeheader()
+            writer.writerows(self.dataset)
+            print(f"Dataset saved to {filepath}")
+
+
 def main() -> None:
     chunks = load_payload_chunks()
     sender = reno(HOST, PORT)
-    total_bytes, duration, delays = sender.send_chunks(chunks)
-    calculate_metrics(total_bytes, duration, delays)
+
+    for i in range(50):
+        total_bytes, duration, delays = sender.send_chunks(chunks)
+        calculate_metrics(total_bytes, duration, delays)
+
+    sender.save_dataset("reno_dataset.csv")
+    
 
 if __name__ == "__main__":
     try:

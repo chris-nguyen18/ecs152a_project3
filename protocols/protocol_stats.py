@@ -109,6 +109,9 @@ tcp_tahoe_results = {
     }
 }
 
+print_averaged(tcp_tahoe_results)
+compute_std(tcp_tahoe_results)
+
 # tcp reno
 tcp_reno_results = {
     "tcp_reno": {
@@ -132,5 +135,8 @@ tcp_reno_results = {
         }
     }
 }
+
+print_averaged(tcp_reno_results)
+compute_std(tcp_reno_results)
 
 # custom

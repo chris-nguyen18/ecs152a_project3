@@ -16,9 +16,91 @@ ACK_TIMEOUT = 1.0
 MAX_TIMEOUTS = 5
 MAX_CWND = 1000
 MIN_CWND = 10
+MAX_RETRIES = 5
 
 HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
+
+class custom_protocol:
+   def __init__(self, host: str, port: int):
+      self.host = host
+      self.port = port
+      self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+      self.socket.settimeout(ACK_TIMEOUT)
+      self.cwnd = 50
+      self.ssthresh = 64
+      self.base = 0
+      self.next_seq = 0
+      self.total_bytes = 0
+      self.delays = []
+      self.timeouts = 0
+      self.last_ack = -1
+      self.dupacks = 0
+      self.in_fast_recovery = False
+      self.send_times = {}
+
+   def send_chunks(self, chunks: List[bytes]):
+      start_time = time.time()
+      total_bytes = sum(len(chunk) for chunk in chunks)
+      while self.base < len(chunks):
+         while self.next_seq < self.base + int(self.cwnd) and self.next_seq < len(chunks):
+            seq_bytes = self.next_seq * MSS
+            pkt = make_packet(seq_bytes, chunks[self.next_seq])
+            self.send_times[seq_bytes] = time.time()
+            self.socket.sendto(pkt, (self.host, self.port))
+            self.total_bytes += len(chunks[self.next_seq])
+            self.next_seq += 1
+         try:
+            ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
+            ack_id, _ = parse_ack(ack_pkt)
+            recv_time = time.time()
+            delay = recv_time - self.send_times.get(ack_id, recv_time)
+            self.delays.append(delay)
+
+            if ack_id == self.last_ack:
+               self.dupacks += 1
+            else:
+               self.dupacks = 0
+            self.last_ack = ack_id
+            
+            throughput = total_bytes / (recv_time - start_time)
+            loss = self.dupacks / max(self.next_seq - self.base, 1)
+            self.cwnd = classify_cwnd(loss, delay, throughput, self.cwnd)
+         
+            # Handling timeout by resetting CWND
+            if time.time() - self.send_times.get(self.base, time.time()) > ACK_TIMEOUT:
+               print("Timeout: Retransmitting...")
+               self.timeouts += 1
+               if self.timeouts >= MAX_TIMEOUTS:
+                  break
+               self.ssthresh = max(self.cwnd // 2, 2)
+               self.cwnd = MIN_CWND 
+               self.next_seq = self.base
+
+         except socket.timeout:
+            self.timeouts += 1
+            if self.timeouts >= MAX_TIMEOUTS:
+               break
+            self.ssthresh = max(int(self.cwnd // 2), 2)
+            self.cwnd = 1
+
+      eof_seq = total_bytes
+      eof_pkt = make_packet(eof_seq, b"")
+      retries = 0
+      while retries < MAX_TIMEOUTS:
+            self.socket.sendto(eof_pkt, (self.host, self.port))
+            try:
+               ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
+               ack_id, _ = parse_ack(ack_pkt)
+               if ack_id >= eof_seq:
+                  break
+            except socket.timeout:
+               retries += 1
+
+      duration = time.time() - start_time
+      return self.total_bytes, duration, self.delays
+      
+
 
 '''
 Put in readme to just run this file, the custom protocol folder is for recreating the model 
@@ -113,7 +195,7 @@ def parse_ack(packet: bytes) -> Tuple[int, str]:
    return seq, msg
 
 
-def print_metrics(total_bytes: int, duration: float, delays: List[float]) -> None:
+def calculate_metrics(total_bytes: int, duration: float, delays: List[float]) -> None:
    throughput = total_bytes / duration if duration > 0 else 0.0
 
    avg_delay = sum(delays) / len(delays) if delays else 0.0
@@ -151,7 +233,7 @@ def model_predict_cwnd(model, scaler, loss, delay, throughput):
 '''
 
 # Uses equations as hardcoded values from model
-def predict_cwnd(loss, delay, throughput, current_cwnd):
+def classify_cwnd(loss, delay, throughput, current_cwnd):
    score_decrease = (-0.076597 * loss +
                       -0.200254 * delay +
                       -0.002375 * throughput +
@@ -167,7 +249,7 @@ def predict_cwnd(loss, delay, throughput, current_cwnd):
                      -0.450373 * throughput +
                      -0.977209)
 
-   # Choose the action with the highest score
+   # Choose the action with the log-odds
    scores = {
       "decrease": score_decrease,
       "hold": score_hold,
@@ -177,7 +259,8 @@ def predict_cwnd(loss, delay, throughput, current_cwnd):
    best_action = max(scores, key=scores.get)
 
    if best_action == "increase":
-      return current_cwnd + 5
+      # incremental increase as proportion of current window
+      return min(current_cwnd + (current_cwnd // 10), MAX_CWND)
    elif best_action == "decrease":
       return max(current_cwnd - 5, MIN_CWND)  
    else: 
@@ -186,70 +269,10 @@ def predict_cwnd(loss, delay, throughput, current_cwnd):
 
 def main() -> None:
    chunks = load_payload_chunks()
-   total_bytes = sum(len(chunk) for chunk in chunks)
-
-   with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-      sock.settimeout(ACK_TIMEOUT)
-
-      next_seq = 0
-      base = 0  
-      inflight = {} 
-
-      start_time = time.time()
-      delays = []
-      loss_count = 0
-
-      cwnd = 50
-      predicted_cwnd = 1
-
-      while base < len(chunks):
-         while next_seq < len(chunks) and (len(inflight) < cwnd):
-            seq_id = next_seq
-            payload = chunks[seq_id]
-            packet = make_packet(seq_id, payload)
-
-            addr = (HOST, PORT)
-            sock.sendto(packet, addr)
-            inflight[seq_id] = time.time()
-            next_seq += 1
-
-         try:
-            ack_pkt, _ = sock.recvfrom(PACKET_SIZE)
-            ack_id, _ = parse_ack(ack_pkt)
-
-            if ack_id in inflight:
-               rtt = time.time() - inflight[ack_id]
-               delays.append(rtt)
-               del inflight[ack_id]
-
-               if ack_id == base:
-                  while base not in inflight and base < len(chunks):
-                     base += 1
-
-               duration = time.time() - start_time
-               throughput = total_bytes / duration if duration > 0 else 0
-               avg_delay = sum(delays) / len(delays)
-               loss_rate = loss_count / max(len(chunks), 1)
-
-               predicted_cwnd = predict_cwnd(loss_rate, avg_delay, throughput, cwnd)
-
-               cwnd = max(min(int(predicted_cwnd), MAX_CWND), MIN_CWND)
-
-               print(f"[DEBUG ML]: cwnd={cwnd} loss={loss_rate:.4f} delay={avg_delay:.5f}")
-
-         except socket.timeout:
-            print("[WARNING] ACK timeout → treating as loss")
-            loss_count += 1
-               
-            for seq in list(inflight.keys()):   
-               #seq_id = base
-               packet = make_packet(seq, chunks[seq_id])
-               sock.sendto(packet, addr)
-               inflight[seq] = time.time()
-
-   duration = time.time() - start_time
-   print_metrics(total_bytes, duration, delays)
-
+   sender = custom_protocol(HOST, PORT)
+   total_bytes, duration, delays = sender.send_chunks(chunks)
+   calculate_metrics(total_bytes, duration, delays)
+   
 
 if __name__ == "__main__":
    try:

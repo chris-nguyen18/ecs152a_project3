@@ -9,7 +9,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import joblib
 
-DATA_FILE = "pantheon.json"
 
 def convert(json_file):
    samples = []
@@ -55,6 +54,9 @@ def convert(json_file):
                   prev = curr
 
    return samples
+
+def create_samples(json_data, csv_data):
+   pass
 
 def data_preprocess(samples):
    X = []
