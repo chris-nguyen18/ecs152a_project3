@@ -57,32 +57,54 @@ class custom_protocol:
             delay = recv_time - self.send_times.get(ack_id, recv_time)
             self.delays.append(delay)
 
+            sent_time = self.send_times.get(ack_id, recv_time)
+            delay = recv_time - sent_time
+            self.delays.append(delay)
+
+            if ack_id >= (self.base * MSS):
+               self.base = (ack_id // MSS) + 1
+
+            self.timeouts = 0
+
             if ack_id == self.last_ack:
                self.dupacks += 1
             else:
                self.dupacks = 0
+               self.in_fast_recovery = False
+            
             self.last_ack = ack_id
             
             throughput = total_bytes / (recv_time - start_time)
             loss = self.dupacks / max(self.next_seq - self.base, 1)
             self.cwnd = classify_cwnd(loss, delay, throughput, self.cwnd)
-         
-            # Handling timeout by resetting CWND
-            if time.time() - self.send_times.get(self.base, time.time()) > ACK_TIMEOUT:
-               print("Timeout: Retransmitting...")
-               self.timeouts += 1
-               if self.timeouts >= MAX_TIMEOUTS:
-                  break
-               self.ssthresh = max(self.cwnd // 2, 2)
-               self.cwnd = MIN_CWND 
-               self.next_seq = self.base
 
+            # Fast transmit for duplicate ACK's
+            if self.dupacks == 3 and not self.in_fast_recovery:
+               self.ssthresh = max(int(self.cwnd / 2), 1)
+               self.cwnd = self.ssthresh + 3
+               missing_idx = ack_id // MSS
+               if missing_idx < len(chunks):
+                  pkt = make_packet(missing_idx * MSS, chunks[missing_idx])
+                  self.send_times[missing_idx * MSS] = time.time()
+                  self.socket.sendto(pkt, (self.host, self.port))
+               self.in_fast_recovery = True
+
+         # Handling timeout
          except socket.timeout:
             self.timeouts += 1
+            print("Timeout: Retransmitting...")
             if self.timeouts >= MAX_TIMEOUTS:
                break
+
             self.ssthresh = max(int(self.cwnd // 2), 2)
-            self.cwnd = 1
+            self.cwnd = MIN_CWND
+            
+            if self.base < len(chunks):
+               seq_bytes = self.base * MSS
+               pkt = make_packet(seq_bytes, chunks[self.base])
+               self.send_times[seq_bytes] = time.time()
+               self.socket.sendto(pkt, (self.host, self.port))
+            self.next_seq = self.base 
 
       eof_seq = total_bytes
       eof_pkt = make_packet(eof_seq, b"")

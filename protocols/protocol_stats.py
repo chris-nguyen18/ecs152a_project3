@@ -140,3 +140,32 @@ print_averaged(tcp_reno_results)
 compute_std(tcp_reno_results)
 
 # custom
+
+# add in with combined dataset later
+# current pantheon dataset only
+
+custom_protocol_results = {
+    "custom_protocol": {
+        "runs": [
+            {"run": 1, "throughput": 3110.3954627, "avg_delay": 0.1236642, "avg_jitter": 0.0039295, "score": 4100.9109344},
+            {"run": 2, "throughput": 1771.6020437, "avg_delay": 0.2145506, "avg_jitter": 0.0057508, "score": 2772.6122375},
+            {"run": 3, "throughput": 1165.2585541, "avg_delay": 0.1287821, "avg_jitter": 0.0008359, "score": 18218.4259806},
+            {"run": 4, "throughput": 1993.7817465, "avg_delay": 0.6337517, "avg_jitter": 0.0140062, "score": 1127.1858651},
+            {"run": 5, "throughput": 1268.6139565, "avg_delay": 0.2655381, "avg_jitter": 0.0065426, "score": 2426.0577282},
+            {"run": 6, "throughput": 1598.8763665, "avg_delay": 0.3778821, "avg_jitter": 0.0090213, "score": 1756.5998481},
+            {"run": 7, "throughput": 1643.4572563, "avg_delay": 0.1272424, "avg_jitter": 0.0008395, "score": 18143.7092133},
+            {"run": 8, "throughput": 1318.0131434, "avg_delay": 0.1529757, "avg_jitter": 0.0008914, "score": 17057.2689675},
+            {"run": 9, "throughput": 1545.5084326, "avg_delay": 0.3826545, "avg_jitter": 0.0095005, "score": 1671.6167884},
+            {"run": 10, "throughput": 1990.0564674, "avg_delay": 0.3041146, "avg_jitter": 0.0081834, "score": 1949.0621882}
+        ],
+        "averaged": {
+            "Throughput_bytes_per_sec": 1740.556,
+            "Avg_Delay_sec": 0.271116,
+            "Avg_Jitter_sec": 0.005950,
+            "Score": 6922.345
+        }
+    }
+}
+
+print_averaged(custom_protocol_results)
+compute_std(custom_protocol_results)

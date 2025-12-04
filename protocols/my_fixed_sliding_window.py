@@ -19,7 +19,6 @@ HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
 
-# test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
 def load_payload_chunks() -> List[bytes]:
    """
    Reads the selected payload file (or falls back to file.zip) and returns
@@ -51,50 +50,7 @@ def load_payload_chunks() -> List[bytes]:
       return [default[i:i+MSS] for i in range(0, len(default), MSS)]
    
    return [data[i:i+MSS] for i in range(0, len(data), MSS)]
-'''
 
-# test load_payload_chunks() function with 5 chunks for easier testing
-def load_payload_chunks() -> List[bytes]:
-   candidates = [
-      os.environ.get("TEST_FILE"),
-      os.environ.get("PAYLOAD_FILE"),
-      "/hdd/file.zip",
-      "file.zip",
-   ]
-
-   for path in candidates:
-      if not path:
-         continue
-      expanded = os.path.expanduser(path)
-      if os.path.exists(expanded):
-         with open(expanded, "rb") as f:
-               data = f.read()
-         break
-   #if not data:
-        # Either file not found or empty → return demo placeholders
-        #print("returned default list chunks")
-        #return [b"Hello from ECS152A!", b"Second packet from skeleton sender"]
-   
-   if not data:
-      print("DEBUG: returned default list chunks")
-      return [
-         b"Chunk 1 placeholder",
-         b"Chunk 2 placeholder",
-         b"Chunk 3 placeholder",
-         b"Chunk 4 placeholder",
-         b"Chunk 5 placeholder",
-      ]
-    # Split the data into MSS-sized chunks
-    # debug with 5 chunks 
-   print("DEBUG: print full chunk list")
-   chunk1 = data[0:MSS] or b"Chunk 1 placeholder"
-   chunk2 = data[MSS:2*MSS] or b"Chunk 2 placeholder"
-   chunk3 = data[2*MSS:3*MSS] or b"Chunk 3 placeholder"
-   chunk4 = data[3*MSS:4*MSS] or b"Chunk 4 placeholder"
-   chunk5 = data[4*MSS:5*MSS] or b"Chunk 5 placeholder"
-
-   return [chunk1, chunk2, chunk3, chunk4, chunk5]
-'''
    
 def make_packet(seq_id: int, payload: bytes) -> bytes:
    return int.to_bytes(seq_id, SEQ_ID_SIZE, byteorder="big", signed=True) + payload
