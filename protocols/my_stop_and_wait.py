@@ -18,55 +18,11 @@ HOST = os.environ.get("RECEIVER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RECEIVER_PORT", "5001"))
 
 
-# test load_payload_chunks() extending skeleton code to 5 chunks for simpler testing
-'''
-def load_payload_chunks() -> List[bytes]:
-   candidates = [
-      os.environ.get("TEST_FILE"),
-      os.environ.get("PAYLOAD_FILE"),
-      "/hdd/file.zip",
-      "file.zip",
-   ]
-
-   for path in candidates:
-      if not path:
-         continue
-      expanded = os.path.expanduser(path)
-      if os.path.exists(expanded):
-         with open(expanded, "rb") as f:
-               data = f.read()
-         break
-   #if not data:
-        # Either file not found or empty → return demo placeholders
-        #print("returned default list chunks")
-        #return [b"Hello from ECS152A!", b"Second packet from skeleton sender"]
-   
-   if not data:
-      print("returned default list chunks")
-      return [
-         b"Chunk 1 placeholder",
-         b"Chunk 2 placeholder",
-         b"Chunk 3 placeholder",
-         b"Chunk 4 placeholder",
-         b"Chunk 5 placeholder",
-      ]
-    # Split the data into MSS-sized chunks
-    # debug with 5 chunks 
-   print("print full chunk list")
-   chunk1 = data[0:MSS] or b"Chunk 1 placeholder"
-   chunk2 = data[MSS:2*MSS] or b"Chunk 2 placeholder"
-   chunk3 = data[2*MSS:3*MSS] or b"Chunk 3 placeholder"
-   chunk4 = data[3*MSS:4*MSS] or b"Chunk 4 placeholder"
-   chunk5 = data[4*MSS:5*MSS] or b"Chunk 5 placeholder"
-
-   return [chunk1, chunk2, chunk3, chunk4, chunk5]
-   #return [data[i : i + MSS] for i in range(0, len(data), MSS)]
-'''
-
 def load_payload_chunks() -> List[bytes]:
    """
+   Extension of the skeleton code creating a full list of MSS-sized chunks instead of two demo chunks
    Reads the selected payload file (or falls back to file.zip) and returns
-   up to two MSS-sized chunks for the demo transfer.
+   long repeated string split into MSS-sized chunks up to full payload length
    """
    candidates = [
       os.environ.get("TEST_FILE"),

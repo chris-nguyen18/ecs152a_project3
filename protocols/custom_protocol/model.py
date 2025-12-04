@@ -4,101 +4,32 @@ from __future__ import annotations
 
 # imports for model
 import numpy as np
-import json
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import joblib
+import pandas as pd
 
-
-def convert(json_file):
-   samples = []
-   with open(json_file, "r") as f:
-      data = json.load(f)
-
-      for algo_label, runs in data.items():
-         for run_id, flows in runs.items():
-
-               ordered_keys = sorted(
-                  flows.keys(),
-                  key=lambda x: float("inf") if x=="all" else int(x)
-               )
-
-               prev_key = ordered_keys[0]
-               prev = flows[prev_key]
-
-               for k in ordered_keys[1:]:
-                  curr = flows[k]
-
-                  if not all(m in prev for m in ("loss","delay","tput")): 
-                     prev = curr
-                     continue
-                  if not all(m in curr for m in ("loss","delay","tput")):
-                     prev = curr
-                     continue
-
-                  features = {
-                     "loss": prev["loss"],
-                     "delay": prev["delay"],
-                     "throughput": prev["tput"]
-                  }
-
-                  action = label_action(prev, curr)
-
-                  samples.append({
-                     "loss": features["loss"],
-                     "delay": features["delay"],
-                     "throughput": features["throughput"],
-                     "label": action
-                  })
-
-                  prev = curr
-
-   return samples
-
-def create_samples(json_data, csv_data):
-   pass
-
-def data_preprocess(samples):
-   X = []
-   y = []
-
-   for s in samples:
-      if s["loss"] is None or s["delay"] is None or s["throughput"] is None:
-         continue
-      if s["loss"] < 0 or s["delay"] < 0 or s["throughput"] < 0:
-         continue
-
-      X.append([s["loss"], s["delay"], s["throughput"]])
-      y.append(s["label"])
-
-   X = np.array(X)
-
-   encoder = LabelEncoder()
-   y_encoded = encoder.fit_transform(y)
+def data_preprocess(df):
+   X = df[["loss", "delay", "throughput"]].values
+   y = df["label"].values
 
    scaler = StandardScaler()
+
+   # Scale the features using the entire combined dataset
    X_scaled = scaler.fit_transform(X)
 
-   return X_scaled, y_encoded, encoder, scaler
+   encoder = LabelEncoder()
 
-def label_action(prev, curr):
-   dl = curr["delay"] - prev["delay"]
-   dl_loss = curr["loss"] - prev["loss"]
-   dl_tput = curr["tput"] - prev["tput"]
+   custom_label_mapping = {'decrease': 0, 'hold': 1, 'increase': 2}
+   df['label'] = df['label'].map(custom_label_mapping)
 
-   if dl_loss > 0 or dl > 0:
-      return "decrease"
+   y_encoded = df['label'].values
 
-   if dl_tput > 0 and dl <= 0 and dl_loss <= 0:
-      return "increase"
+   return X_scaled, y_encoded, scaler, encoder
 
-   return "hold"
-
-
-def train_model():
-   X = np.load("X.npy")
-   y = np.load("y.npy")
-
+def train_model(X, y):
    model = LogisticRegression(
       multi_class='multinomial',
       solver='lbfgs',
@@ -128,18 +59,49 @@ def print_model_equations(model, encoder):
             f"{w[2]:.6f} * throughput "
             f"+ ({b:.6f})")
 
+def evaluate_model(model, X_test, y_test):
+   y_pred = model.predict(X_test)
+
+   # Calculate evaluation metrics
+   accuracy = accuracy_score(y_test, y_pred)
+   precision = precision_score(y_test, y_pred, average='weighted')  # 'weighted' handles imbalanced classes
+   recall = recall_score(y_test, y_pred, average='weighted')
+   f1 = f1_score(y_test, y_pred, average='weighted')
+
+   print(f"Accuracy: {accuracy:.4f}")
+   print(f"Precision: {precision:.4f}")
+   print(f"Recall: {recall:.4f}")
+   print(f"F1-Score: {f1:.4f}")
 
 if __name__ == "__main__":
-   samples = convert("pantheon.json")
-   X_scaled, y_encoded, encoder, scaler = data_preprocess(samples)
+   pantheon_df = joblib.load("../pantheon_df.pkl")
+   #reno_df = joblib.load("../reno_df.pkl")
 
-   np.save("X.npy", X_scaled)
-   np.save("y.npy", y_encoded)
+   #combined_df = pd.concat([pantheon_df, reno_df], ignore_index=True)
+   #print(combined_df.head())   
+
+   # change to combined later
+   X_scaled, y_encoded, scaler, encoder = data_preprocess(pantheon_df) 
+
+   X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_encoded, test_size=0.2, random_state=42)
 
    joblib.dump(encoder, "label_encoder.pkl")
    joblib.dump(scaler, "scaler.pkl")
 
-   model = train_model()
-   encoder = joblib.load("label_encoder.pkl")
+   np.save("X_train.npy", X_train)
+   np.save("y_train.npy", y_train)
+   np.save("X_test.npy", X_test)
+   np.save("y_test.npy", y_test)
 
+   # Train the model with the training data
+   model = train_model(X_train, y_train)
+
+   # Create a label encoder manually for printing the model's equations
+   encoder = LabelEncoder()
+   encoder.fit(['decrease', 'hold', 'increase'])  # Manually fit the encoder to the custom labels
+
+   # Print the model's coefficients for each class
    print_model_equations(model, encoder)
+
+   # Evaluate the model on the test data
+   evaluate_model(model, X_test, y_test)
