@@ -75,12 +75,7 @@ def evaluate_model(model, X_test, y_test):
 
 if __name__ == "__main__":
    pantheon_df = joblib.load("../pantheon_df.pkl")
-   #reno_df = joblib.load("../reno_df.pkl")
 
-   #combined_df = pd.concat([pantheon_df, reno_df], ignore_index=True)
-   #print(combined_df.head())   
-
-   # change to combined later
    X_scaled, y_encoded, scaler, encoder = data_preprocess(pantheon_df) 
 
    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_encoded, test_size=0.2, random_state=42)

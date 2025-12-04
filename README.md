@@ -2,14 +2,106 @@
 
 This project is meant to teach TCP congestion control algorithms through implementation. You will build sender programs that transfer files over an emulated network with variable bandwidth, latency, and packet loss.
 
+## Notes about structure 
+1. **Project Structure** All of our implementations will be in the protocols
+    ``` .
+    ├── README.md
+    ├── SETUP.md
+    ├── docker
+    │   ├── Dockerfile
+    │   ├── docker-script.sh
+    │   ├── file.mp3
+    │   ├── file.zip
+    │   ├── hdd
+    │   │   └── file.zip
+    │   ├── receiver.py
+    │   ├── sender_skeleton.py
+    │   ├── start-simulator.sh
+    │   ├── start_sim.bat
+    │   ├── test_sender.bat
+    │   ├── test_sender.sh
+    │   └── training_profile.sh
+    ├── protocols
+    │   ├── TROUBLESHOOTING.md
+    │   ├── custom_protocol
+    │   │   ├── X.npy
+    │   │   ├── data_collection_preprocessing
+    │   │   │   ├── data
+    │   │   │   │   └── pantheon.json
+    │   │   │   ├── pantheon_data_collection.py
+    │   │   │   ├── pantheon_data_preprocess.py
+    │   │   │   └── pantheon_df.pkl
+    │   │   ├── label_encoder.pkl
+    │   │   ├── ml_cwnd_model.pkl
+    │   │   ├── model.py
+    │   │   ├── scaler.pkl
+    │   │   └── y.npy
+    │   ├── my_custom_protocol.py
+    │   ├── my_fixed_sliding_window.py
+    │   ├── my_stop_and_wait.py
+    │   ├── my_tcp_reno.py
+    │   ├── my_tcp_tahoe.py
+    │   └── protocol_stats.py
+    └── submissionPage3_ChrisNguyen_921229957_AndreVojtenyi_919403594.pdf
+    ```
+2. **Custom protocol** The sender file is custom_file.py. The custom_protocol folder includes steps about data collection, preprocessing, model training, and saves the model and other data used. It has external libraries such as sklearn and pandas and isn't run inside the docker container. In case you want to recreate the instructions are below assuming python3 is already installed.
+
+---
+
+## Setting up the Python environment
+
+1. **Create a virtual environment** (recommended to avoid conflicts with system libraries):  
+   ```bash
+   python3 -m venv venv
+    ```
+2. Activate the virtual environment 
+### Linux / macOS
+```bash
+source venv/bin/activate
+```
+### Windows
+```bash
+venv\Scripts\activate.bat
+```
+3. **Installing Libraries**
+```
+#!/bin/bash
+
+# Activate the virtual environment first (if not already activated)
+# Linux/macOS: source venv/bin/activate
+# Windows (Git Bash): source venv/Scripts/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install required packages
+pip install numpy pandas scikit-learn
+
+# Verify installations
+python -c "import numpy; import pandas; import sklearn; print('All packages installed successfully!')"
+```
+
+4. **Running Python**
+```
+# Preprocess Pantheon dataset
+python3 protocols/custom_protocol/pantheon_data_preprocess.py
+
+# Train or load the ML CWND model
+python3 protocols/custom_protocol/model.py
+```
+
 ## Quick Start
 
 1. **Setup** (one time): Install Docker - see [SETUP.md](SETUP.md)
 2. **Testing**: Use the simplified test script (optionally pass a custom payload):
-   ```bash
-   cd docker
-   ./test_sender.sh your_sender.py [payload.zip]
-   ```
+```bash
+cd docker
+# Build + launch simulator (detached, keeps running)
+./start-simulator.sh
+
+# Test your implementation (optional payload arg)
+./test_sender.sh ../protocols/my_stop_and_wait.py [payload.zip]
+```
 3. **Troubleshooting**: Having issues? Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Quick Test Workflow
@@ -23,7 +115,7 @@ cd docker
 ./start-simulator.sh
 
 # Test your implementation (optional payload arg)
-./test_sender.sh my_stop_and_wait.py [payload.zip]
+./test_sender.sh ../protocols/my_stop_and_wait.py [payload.zip]
 ```
 
 **Windows (Command Prompt/Batch):**
@@ -35,7 +127,7 @@ cd docker
 start_sim.bat
 
 # Test your implementation (optional payload arg)
-test_sender.bat my_stop_and_wait.py [payload.zip]
+test_sender.bat ../protocols/my_stop_and_wait.py [payload.zip]
 ```
 
 **What the test scripts are supposed to do:**

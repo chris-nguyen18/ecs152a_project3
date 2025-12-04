@@ -55,9 +55,10 @@ stop_and_wait_results = {
    }
 }
 
+print("-------------------------------------------------------------------------")
 print_averaged(stop_and_wait_results)
 compute_std(stop_and_wait_results)
-
+print("-------------------------------------------------------------------------")
 # sliding window
 fixed_sliding_window_results = {
    "fixed_sliding_window": {
@@ -84,7 +85,7 @@ fixed_sliding_window_results = {
 
 print_averaged(fixed_sliding_window_results)
 compute_std(fixed_sliding_window_results)
-
+print("-------------------------------------------------------------------------")
 # tcp tahoe
 tcp_tahoe_results = {
     "tcp_tahoe": {
@@ -111,6 +112,7 @@ tcp_tahoe_results = {
 
 print_averaged(tcp_tahoe_results)
 compute_std(tcp_tahoe_results)
+print("-------------------------------------------------------------------------")
 
 # tcp reno
 tcp_reno_results = {
@@ -138,12 +140,9 @@ tcp_reno_results = {
 
 print_averaged(tcp_reno_results)
 compute_std(tcp_reno_results)
+print("-------------------------------------------------------------------------")
 
 # custom
-
-# add in with combined dataset later
-# current pantheon dataset only
-
 custom_protocol_results = {
     "custom_protocol": {
         "runs": [
@@ -169,3 +168,4 @@ custom_protocol_results = {
 
 print_averaged(custom_protocol_results)
 compute_std(custom_protocol_results)
+print("-------------------------------------------------------------------------")
