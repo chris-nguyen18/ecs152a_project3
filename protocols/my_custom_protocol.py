@@ -69,10 +69,6 @@ class custom_protocol:
             delay = recv_time - self.send_times.get(ack_id, recv_time)
             self.delays.append(delay)
 
-            sent_time = self.send_times.get(ack_id, recv_time)
-            delay = recv_time - sent_time
-            self.delays.append(delay)
-
             if ack_id >= (self.base * MSS):
                self.base = (ack_id // MSS) + 1
 
