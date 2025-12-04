@@ -92,6 +92,7 @@ class reno:
     def send_chunks(self, chunks: List[bytes]):
         start_time = time.time()
         total_bytes = sum(len(c) for c in chunks)
+
         while self.base < len(chunks):
             while self.next_seq < self.base + int(self.cwnd) and self.next_seq < len(chunks):
                 seq_bytes = self.next_seq * MSS
@@ -99,13 +100,20 @@ class reno:
                 self.send_times[seq_bytes] = time.time()
                 self.socket.sendto(pkt, (self.host, self.port))
                 self.total_bytes += len(chunks[self.next_seq])
+                # debugging
+                # print(f"[SEND] seq={seq_bytes} cwnd={self.cwnd} base={self.base}")
+                # sys.stdout.flush()
                 self.next_seq += 1
+
             try:
                 ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
                 ack_id, _ = parse_ack(ack_pkt)
                 recv_time = time.time()
                 delay = recv_time - self.send_times.get(ack_id, recv_time)
                 self.delays.append(delay)
+                # debugging
+                # print(f"[ACK RECEIVED] ack_id={ack_id} delay={delay:.6f}s")
+                # sys.stdout.flush()
 
                 if ack_id == self.last_ack:
                     self.dupacks += 1
@@ -116,20 +124,32 @@ class reno:
                 if self.dupacks == 3 and not self.in_fast_recovery:
                     self.ssthresh = max(int(self.cwnd / 2), 1)
                     self.cwnd = self.ssthresh + 3
+                    # debugging
+                    # print(f"[TRIPLE DUPACK] enter fast recovery ssthresh={self.ssthresh} cwnd={self.cwnd}")
+                    # sys.stdout.flush()
                     missing_idx = ack_id // MSS
                     if missing_idx < len(chunks):
                         pkt = make_packet(missing_idx * MSS, chunks[missing_idx])
                         self.socket.sendto(pkt, (self.host, self.port))
+                        # debugging
+                        # print(f"[FAST RETRANSMIT] seq={(missing_idx*MSS)}")
+                        # sys.stdout.flush()
                     self.in_fast_recovery = True
                     continue
 
                 if self.in_fast_recovery:
                     if ack_id // MSS > self.base:
+                        # debugging
+                        # print(f"[EXIT FAST RECOVERY] ack_id={ack_id}")
+                        # sys.stdout.flush()
                         self.cwnd = self.ssthresh
                         self.base = (ack_id // MSS) + 1
                         self.in_fast_recovery = False
                     else:
                         self.cwnd += 1
+                        # debugging
+                        # print(f"[FAST RECOVERY INCREASE] cwnd={self.cwnd}")
+                        # sys.stdout.flush()
                     continue
 
                 if ack_id // MSS >= self.base:
@@ -138,31 +158,56 @@ class reno:
                         self.cwnd += 1
                     else:
                         self.cwnd += 1 / self.cwnd
+                    # debugging
+                    # print(f"[NEW ACK] base={self.base} cwnd={self.cwnd}")
+                    # sys.stdout.flush()
+
                 self.timeouts = 0
 
             except socket.timeout:
                 self.timeouts += 1
+                # debugging
+                # print(f"[TIMEOUT] base={self.base} cwnd={self.cwnd} timeouts={self.timeouts}")
+                # sys.stdout.flush()
+
                 if self.timeouts >= MAX_TIMEOUTS:
+                    # debugging
+                    # print("[MAX TIMEOUTS REACHED] stopping transmission")
+                    #sys.stdout.flush()
                     break
+
                 self.ssthresh = max(int(self.cwnd / 2), 1)
                 self.cwnd = 1
+
                 if self.base < len(chunks):
                     seq_bytes = self.base * MSS
                     pkt = make_packet(seq_bytes, chunks[self.base])
                     self.socket.sendto(pkt, (self.host, self.port))
-
+                    # debugging
+                    # print(f"[RETRANSMIT] seq={seq_bytes} due to timeout")
+                    # sys.stdout.flush()
         eof_seq = total_bytes
         eof_pkt = make_packet(eof_seq, b"")
         retries = 0
+
         while True:
             self.socket.sendto(eof_pkt, (self.host, self.port))
+            # debugging
+            # print(f"[SEND EOF] seq={eof_seq}")
+            # sys.stdout.flush()
             try:
                 ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
                 ack_id, _ = parse_ack(ack_pkt)
+                # debugging
+                # print(f"[ACK RECEIVED EOF] ack_id={ack_id}")
+                # sys.stdout.flush()
                 if ack_id >= eof_seq:
                     break
             except socket.timeout:
                 retries += 1
+                # debugging
+                # print(f"[TIMEOUT EOF] retries={retries}")
+                # sys.stdout.flush()
                 if retries > MAX_TIMEOUTS:
                     break
 

@@ -154,7 +154,8 @@ def main() -> None:
    acked = {i: False for i in range(total_packets)}
    delays = []
 
-   print(f"Connecting to receiver at {HOST}:{PORT}")  
+   # debugging
+   # print(f"Connecting to receiver at {HOST}:{PORT}")  
 
    start_time = time.time()
 

@@ -105,7 +105,8 @@ def main() -> None:
 
    total_bytes = sum(len(chunk) for chunk in chunks)
 
-   print(f"Connecting to receiver at {HOST}:{PORT}")
+   # debugging
+   # print(f"Connecting to receiver at {HOST}:{PORT}")
 
    start_time = time.time()
 
@@ -115,7 +116,8 @@ def main() -> None:
 
       for seq_id, payload in transfers:
          pkt = make_packet(seq_id, payload)
-         #print(f"Sending frame seq={seq_id}, bytes={len(payload)}")
+         # debugging
+         # print(f"Sending frame seq={seq_id}, bytes={len(payload)}")
          retries = 0
 
          while True:
@@ -127,11 +129,13 @@ def main() -> None:
                retries += 1
                if retries > MAX_TIMEOUTS:
                   raise RuntimeError("Receiver did not respond (max retries exceeded)")
-               print(f"Timeout waiting for ACK (seq={seq_id}). Retrying ({retries}/{MAX_TIMEOUTS})...")
+               # debugging
+               # print(f"Timeout waiting for ACK (seq={seq_id}). Retrying ({retries}/{MAX_TIMEOUTS})...")
                continue
 
             ack_id, msg = parse_ack(ack_pkt)
-            #print(f"Received {msg.strip()} for ack_id={ack_id}")
+            # debugging
+            # print(f"Received {msg.strip()} for ack_id={ack_id}")
 
             if msg.startswith("ack") and ack_id >= seq_id + len(payload):
                delays.append(time.time() - send_time)

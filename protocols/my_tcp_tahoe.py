@@ -103,7 +103,7 @@ class tahoe:
                 self.total_bytes += len(chunks[self.next_seq])
                 # debugging
                 # print(f"[SEND] seq={seq_bytes} cwnd={self.cwnd} base={self.base}")
-                sys.stdout.flush()
+                # sys.stdout.flush()
                 self.next_seq += 1
 
             try:
@@ -116,7 +116,7 @@ class tahoe:
                     self.acked.add(ack_id)
                     # debugging
                     # print(f"[ACK RECEIVED] ack_id={ack_id} delay={delay:.6f}s")
-                    sys.stdout.flush()
+                    # sys.stdout.flush()
                 if ack_id // MSS >= self.base:
                     self.base = ack_id // MSS + 1
                     if self.cwnd < self.ssthresh:
@@ -129,7 +129,7 @@ class tahoe:
                 self.cwnd = 1
                 # debugging
                 # print(f"[TIMEOUT] base={self.base} cwnd={self.cwnd} timeouts={self.timeouts}")
-                sys.stdout.flush()
+                # sys.stdout.flush()
                 if self.base < len(chunks):
                     seq_bytes = self.base * MSS
                     pkt = make_packet(seq_bytes, chunks[self.base])
@@ -138,11 +138,11 @@ class tahoe:
                     self.socket.sendto(pkt, (self.host, self.port))
                     # debugging
                     # print(f"[RETRANSMIT] seq={seq_bytes} due to timeout")
-                    sys.stdout.flush()
+                    # sys.stdout.flush()
                 if self.timeouts >= MAX_TIMEOUTS:
                     # debugging
                     # print("[MAX TIMEOUTS REACHED] stopping transmission")
-                    sys.stdout.flush()
+                    # sys.stdout.flush()
                     break
 
         eof_seq = total_bytes
@@ -152,20 +152,20 @@ class tahoe:
             self.socket.sendto(eof_pkt, (self.host, self.port))
             # debugging
             # print(f"[SEND EOF] seq={eof_seq}")
-            sys.stdout.flush()
+            # sys.stdout.flush()
             try:
                 ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
                 ack_id, _ = parse_ack(ack_pkt)
                 # debugging
                 # print(f"[ACK RECEIVED EOF] ack_id={ack_id}")
-                sys.stdout.flush()
+                # sys.stdout.flush()
                 if ack_id >= eof_seq:
                     break
             except socket.timeout:
                 retries += 1
                 # debugging
                 # print(f"[TIMEOUT EOF] retries={retries}")
-                sys.stdout.flush()
+                # sys.stdout.flush()
 
         duration = time.time() - start_time
         return self.total_bytes, duration, self.delays
