@@ -25,11 +25,10 @@ def compute_std(results: dict):
 
    # Compute standard deviations
    print(f"Standard deviations for '{dict_name}':")
-   print("Standard deviation of throughput:", statistics.stdev(throughputs))
-   print("Standard deviation of avg_delay:", statistics.stdev(avg_delays))
-   print("Standard deviation of avg_jitter:", statistics.stdev(avg_jitters))
-   print("Standard deviation of score:", statistics.stdev(scores))
-
+   print("Standard deviation of throughput:", f"{statistics.stdev(throughputs):.7f}")
+   print("Standard deviation of avg_delay:", f"{statistics.stdev(avg_delays):.7f}")
+   print("Standard deviation of avg_jitter:", f"{statistics.stdev(avg_jitters):.7f}")
+   print("Standard deviation of score:", f"{statistics.stdev(scores):.7f}")
 
 # stop and wait
 stop_and_wait_results = {

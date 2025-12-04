@@ -34,115 +34,88 @@ class custom_protocol:
       self.total_bytes = 0
       self.delays = []
       self.timeouts = 0
-      self.last_ack = -1        
+      self.last_ack = -1
       self.dupacks = 0
       self.in_fast_recovery = False
-      self.send_times = {}     
+      self.send_times = {}
 
    def send_chunks(self, chunks: List[bytes]):
       start_time = time.time()
       total_bytes = sum(len(chunk) for chunk in chunks)
-
-      # send loop
       while self.base < len(chunks):
-
-         # sends packets while within window
          while self.next_seq < self.base + int(self.cwnd) and self.next_seq < len(chunks):
             seq_bytes = self.next_seq * MSS
             pkt = make_packet(seq_bytes, chunks[self.next_seq])
-
-            # track timestamp for delay measurement
             self.send_times[seq_bytes] = time.time()
-
-            # send packet
             self.socket.sendto(pkt, (self.host, self.port))
             self.total_bytes += len(chunks[self.next_seq])
             self.next_seq += 1
-
          try:
-            # receive acknowledgment
             ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
             ack_id, _ = parse_ack(ack_pkt)
             recv_time = time.time()
-
-            # calc delay
             delay = recv_time - self.send_times.get(ack_id, recv_time)
+            self.delays.append(delay)
+
+            sent_time = self.send_times.get(ack_id, recv_time)
+            delay = recv_time - sent_time
             self.delays.append(delay)
 
             if ack_id >= (self.base * MSS):
                self.base = (ack_id // MSS) + 1
 
-            # timeout counter reset
             self.timeouts = 0
 
-            # detect duplicate ACK detection
             if ack_id == self.last_ack:
                self.dupacks += 1
             else:
                self.dupacks = 0
                self.in_fast_recovery = False
-
+            
             self.last_ack = ack_id
-
-            # Compute metrics for cwnd classification
+            
             throughput = total_bytes / (recv_time - start_time)
             loss = self.dupacks / max(self.next_seq - self.base, 1)
-
-            # ML-based congestion window update
             self.cwnd = classify_cwnd(loss, delay, throughput, self.cwnd)
 
-            # Fast retransmit on 3 duplicate ACKs
+            # Fast transmit for duplicate ACK's
             if self.dupacks == 3 and not self.in_fast_recovery:
                self.ssthresh = max(int(self.cwnd / 2), 1)
-               self.cwnd = self.ssthresh + 3  # inflate temporarily
-
-               # Retransmit missing packet
+               self.cwnd = self.ssthresh + 3
                missing_idx = ack_id // MSS
                if missing_idx < len(chunks):
                   pkt = make_packet(missing_idx * MSS, chunks[missing_idx])
                   self.send_times[missing_idx * MSS] = time.time()
                   self.socket.sendto(pkt, (self.host, self.port))
-
                self.in_fast_recovery = True
 
          # Handling timeout
          except socket.timeout:
-            # Timeout occurs → retransmit first unacked packet
             self.timeouts += 1
             print("Timeout: Retransmitting...")
-
             if self.timeouts >= MAX_TIMEOUTS:
                break
-
-            # Standard TCP-like multiplicative decrease
             self.ssthresh = max(int(self.cwnd // 2), 2)
             self.cwnd = MIN_CWND
-
-            # Retransmit earliest unacked packet
             if self.base < len(chunks):
                seq_bytes = self.base * MSS
                pkt = make_packet(seq_bytes, chunks[self.base])
                self.send_times[seq_bytes] = time.time()
                self.socket.sendto(pkt, (self.host, self.port))
+            self.next_seq = self.base 
 
-            # Restart sending from the base
-            self.next_seq = self.base
-
-      # Send EOF marker (sequence number at end-of-file)
       eof_seq = total_bytes
       eof_pkt = make_packet(eof_seq, b"")
-
-      # Retry EOF packet until acknowledged or max attempts reached
       retries = 0
       while retries < MAX_TIMEOUTS:
-         self.socket.sendto(eof_pkt, (self.host, self.port))
-         try:
-            ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
-            ack_id, _ = parse_ack(ack_pkt)
-            if ack_id >= eof_seq:
-               break
-         except socket.timeout:
-            retries += 1
+            self.socket.sendto(eof_pkt, (self.host, self.port))
+            try:
+               ack_pkt, _ = self.socket.recvfrom(PACKET_SIZE)
+               ack_id, _ = parse_ack(ack_pkt)
+               if ack_id >= eof_seq:
+                  break
+            except socket.timeout:
+               retries += 1
 
       duration = time.time() - start_time
       return self.total_bytes, duration, self.delays
@@ -233,7 +206,7 @@ def classify_cwnd(loss, delay, throughput, current_cwnd):
                      -0.450373 * throughput +
                      -0.977209)
 
-   # select best action based off of score
+   # Choose the action with the log-odds
    scores = {
       "decrease": score_decrease,
       "hold": score_hold,
@@ -243,12 +216,11 @@ def classify_cwnd(loss, delay, throughput, current_cwnd):
    best_action = max(scores, key=scores.get)
 
    if best_action == "increase":
-      # increase current window
+      # incremental increase as proportion of current window
       return min(current_cwnd + (current_cwnd // 10), MAX_CWND)
    elif best_action == "decrease":
-      # decrease by fixed amount
-      return max(current_cwnd - 5, MIN_CWND)
-   else:
+      return max(current_cwnd - 5, MIN_CWND)  
+   else: 
       return current_cwnd
 
 
